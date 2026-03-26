@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Breathwork</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f5f2ee;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #4a5568;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 400;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #9aa5b4;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Pattern selector */
+    .patterns {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 3rem;
+    }
+
+    .pattern-btn {
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+      border: 1.5px solid #c9d3df;
+      background: transparent;
+      color: #7b8fa3;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pattern-btn:hover {
+      border-color: #a0b4c8;
+      color: #4a5568;
+    }
+
+    .pattern-btn.active {
+      background: #dce8f0;
+      border-color: #a8c4d8;
+      color: #3a6680;
+      font-weight: 500;
+    }
+
+    /* Circle stage */
+    .stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 280px;
+      height: 280px;
+      margin-bottom: 2.5rem;
+    }
+
+    .circle-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 1.5px solid rgba(168, 196, 216, 0.35);
+      pointer-events: none;
+    }
+
+    .circle {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 36%, #c8dff0, #8fb8d8 60%, #6a9cc0);
+      box-shadow: 0 8px 40px rgba(106, 156, 192, 0.28), 0 2px 8px rgba(106, 156, 192, 0.15);
+      transform: scale(0.5);
+      transition: transform 0s linear; /* duration set by JS */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .circle-countdown {
+      font-size: 2rem;
+      font-weight: 300;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: -0.02em;
+      pointer-events: none;
+    }
+
+    /* Phase label */
+    .phase-label {
+      font-size: 1.4rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: #6a8fa8;
+      min-height: 2rem;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    .cycle-label {
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: #b0bfcc;
+      min-height: 1.2rem;
+      margin-bottom: 2.4rem;
+      text-transform: uppercase;
+    }
+
+    /* Start/Stop button */
+    .start-btn {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      border: none;
+      background: #e8f0f6;
+      color: #5a8aaa;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .start-btn:hover {
+      background: #d6e6f0;
+      color: #3a6a88;
+      transform: scale(1.04);
+    }
+
+    .start-btn:active {
+      transform: scale(0.97);
+    }
+
+    .start-btn.running {
+      background: #fceee8;
+      color: #b07060;
+    }
+
+    .start-btn.running:hover {
+      background: #f8e0d6;
+      color: #9a5848;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Breathwork</h1>
+
+  <div class="patterns">
+    <button class="pattern-btn active" data-key="box">Box 4-4-4-4</button>
+    <button class="pattern-btn" data-key="478">4-7-8</button>
+    <button class="pattern-btn" data-key="relax">Relax 4-6</button>
+  </div>
+
+  <div class="stage">
+    <div class="circle-ring"></div>
+    <div class="circle" id="circle">
+      <span class="circle-countdown" id="countdown"></span>
+    </div>
+  </div>
+
+  <div class="phase-label" id="phaseLabel">—</div>
+  <div class="cycle-label" id="cycleLabel"></div>
+
+  <button class="start-btn" id="startBtn">Start</button>
+
+  <script>
+    // ── Patterns ──────────────────────────────────────────────
+    const PATTERNS = {
+      box:   { label: "Box 4-4-4-4", phases: [
+        { name: "Inhale",  dur: 4, size: 1.0, ease: "ease-in"  },
+        { name: "Hold",    dur: 4, size: 1.0, ease: "linear"   },
+        { name: "Exhale",  dur: 4, size: 0.5, ease: "ease-out" },
+        { name: "Hold",    dur: 4, size: 0.5, ease: "linear"   },
+      ]},
+      "478": { label: "4-7-8", phases: [
+        { name: "Inhale",  dur: 4, size: 1.0, ease: "ease-in"  },
+        { name: "Hold",    dur: 7, size: 1.0, ease: "linear"   },
+        { name: "Exhale",  dur: 8, size: 0.5, ease: "ease-out" },
+      ]},
+      relax: { label: "Relax 4-6", phases: [
+        { name: "Inhale",  dur: 4, size: 1.0, ease: "ease-in"  },
+        { name: "Exhale",  dur: 6, size: 0.5, ease: "ease-out" },
+      ]},
+    };
+
+    // Tone frequencies per phase name
+    const TONES = { Inhale: 528, Hold: 396, Exhale: 432 };
+
+    // ── State ─────────────────────────────────────────────────
+    let running      = false;
+    let currentKey   = "box";
+    let phaseIndex   = 0;
+    let cycleCount   = 0;
+    let phaseStart   = 0;   // timestamp when current phase started
+    let rafId        = null;
+    let audioCtx     = null;
+
+    // ── DOM refs ──────────────────────────────────────────────
+    const circle      = document.getElementById("circle");
+    const countdown   = document.getElementById("countdown");
+    const phaseLabel  = document.getElementById("phaseLabel");
+    const cycleLabel  = document.getElementById("cycleLabel");
+    const startBtn    = document.getElementById("startBtn");
+    const patternBtns = document.querySelectorAll(".pattern-btn");
+
+    // ── Audio ─────────────────────────────────────────────────
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playTone(freq) {
+      if (!audioCtx) return;
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.07, audioCtx.currentTime + 0.15);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.55);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.6);
+    }
+
+    // ── Animation helpers ─────────────────────────────────────
+    function applyPhase(phase) {
+      // Force a reflow so the new transition takes effect from current position
+      circle.style.transition = "none";
+      void circle.offsetWidth; // reflow
+
+      circle.style.transition = `transform ${phase.dur}s ${phase.ease}`;
+      circle.style.transform  = `scale(${phase.size})`;
+      phaseLabel.textContent  = phase.name;
+
+      const freq = TONES[phase.name] ?? 440;
+      playTone(freq);
+    }
+
+    function tick(ts) {
+      if (!running) return;
+      const pattern  = PATTERNS[currentKey];
+      const phase    = pattern.phases[phaseIndex];
+      const elapsed  = (ts - phaseStart) / 1000;
+      const remaining = Math.max(0, phase.dur - elapsed);
+
+      countdown.textContent = Math.ceil(remaining);
+
+      if (elapsed >= phase.dur) {
+        // Advance phase
+        const wasLastPhase = phaseIndex === pattern.phases.length - 1;
+        phaseIndex = (phaseIndex + 1) % pattern.phases.length;
+        if (wasLastPhase) {
+          cycleCount++;
+          cycleLabel.textContent = `Cycle ${cycleCount}`;
+        }
+        phaseStart = ts;
+        applyPhase(pattern.phases[phaseIndex]);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ── Controls ──────────────────────────────────────────────
+    function start() {
+      initAudio();
+      running    = true;
+      phaseIndex = 0;
+      cycleCount = 0;
+      cycleLabel.textContent = "";
+      startBtn.textContent   = "Stop";
+      startBtn.classList.add("running");
+
+      const firstPhase = PATTERNS[currentKey].phases[0];
+      // Set initial scale instantly, then start animation
+      circle.style.transition = "none";
+      circle.style.transform  = "scale(0.5)";
+      void circle.offsetWidth;
+
+      phaseStart = performance.now();
+      applyPhase(firstPhase);
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function stop() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      rafId = null;
+
+      // Freeze circle at current computed scale
+      const computed = getComputedStyle(circle).transform;
+      circle.style.transition = "none";
+      circle.style.transform  = computed;
+
+      startBtn.textContent = "Start";
+      startBtn.classList.remove("running");
+      phaseLabel.textContent = "—";
+      countdown.textContent  = "";
+      cycleLabel.textContent = "";
+    }
+
+    startBtn.addEventListener("click", () => {
+      running ? stop() : start();
+    });
+
+    patternBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (running) stop();
+        patternBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentKey = btn.dataset.key;
+
+        // Reset circle
+        circle.style.transition = "none";
+        circle.style.transform  = "scale(0.5)";
+        phaseLabel.textContent  = "—";
+        countdown.textContent   = "";
+      });
+    });
+  </script>
+</body>
+</html>
